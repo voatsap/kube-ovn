@@ -4333,6 +4333,8 @@ rules:
       - dnsnameresolvers/status
       - qos-policies
       - qos-policies/status
+      - bgp-confs
+      - evpn-confs
     verbs:
       - create
       - get
