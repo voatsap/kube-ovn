@@ -1137,13 +1137,7 @@ func vpcEgressGatewayInitContainerFRRConfig(image string, bgpConf *kubeovnv1.Bgp
 }
 
 func formatDurationToSeconds(d metav1.Duration) string {
-	seconds := int64(d.Seconds())
-	if seconds < 0 {
-		seconds = 0
-	}
-	if seconds > 65535 {
-		seconds = 65535
-	}
+	seconds := min(max(int64(d.Seconds()), 0), 65535)
 	return fmt.Sprintf("%ds", seconds)
 }
 
