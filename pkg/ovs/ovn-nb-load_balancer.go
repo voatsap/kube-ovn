@@ -28,12 +28,26 @@ func (c *OVNNbClient) CreateLoadBalancer(lbName, protocol string, selectFields .
 		err   error
 	)
 
+	if IsProjectLoadBalancerName(lbName) {
+		lb, getErr := c.GetLoadBalancer(lbName, false)
+		if getErr != nil {
+			return fmt.Errorf("reserved load balancer must be precreated by its Project owner: %w", getErr)
+		}
+		return validateProjectLoadBalancerRequest(lb, protocol, selectFields)
+	}
 	if exist, err = c.LoadBalancerExists(lbName); err != nil {
 		klog.Errorf("failed to get lb: %v", err)
 		return err
 	}
 	// found, ignore
 	if exist {
+		lb, getErr := c.GetLoadBalancer(lbName, false)
+		if getErr != nil {
+			return getErr
+		}
+		if IsProjectLoadBalancer(lb) {
+			return validateProjectLoadBalancerRequest(lb, protocol, selectFields)
+		}
 		return nil
 	}
 
@@ -338,6 +352,9 @@ func (c *OVNNbClient) DeleteLoadBalancers(filter func(lb *ovnnb.LoadBalancer) bo
 
 	if ops, err = c.ovsDbClient.WhereCache(
 		func(lb *ovnnb.LoadBalancer) bool {
+			if IsProjectLoadBalancer(lb) {
+				return false
+			}
 			if filter != nil {
 				return filter(lb)
 			}

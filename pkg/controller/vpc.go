@@ -289,6 +289,11 @@ func (c *Controller) handleAddOrUpdateVpc(key string) error {
 		return err
 	}
 
+	// formatVpc can release the VPC finalizer. Do not provision after deletion.
+	if !vpc.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
 	learnFromARPRequest := vpc.Spec.EnableExternal || len(vpc.Spec.VpcPeerings) != 0
 	if !learnFromARPRequest {
 		for _, subnetName := range vpc.Status.Subnets {
