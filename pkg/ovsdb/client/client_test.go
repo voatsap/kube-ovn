@@ -69,8 +69,8 @@ func TestMonitorWithTimeoutBreaksReconnectDeadlock(t *testing.T) {
 	case err = <-monitorDone:
 	case <-time.After(time.Second):
 		close(c.releaseMonitor)
-		<-monitorDone
-		t.Fatal("initial monitor did not honor its timeout")
+		monitorErr := <-monitorDone
+		t.Fatalf("initial monitor did not honor its timeout (monitor error: %v)", monitorErr)
 	}
 
 	require.ErrorIs(t, err, context.DeadlineExceeded)
