@@ -1,6 +1,11 @@
 # syntax=docker/dockerfile:1
 ARG VERSION
 ARG BASE_TAG=$VERSION
+FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852 AS security-packages
+RUN apt-get update && mkdir /packages && cd /packages && \
+    apt-get download libbrotli1=1.1.0-2ubuntu0.1 && \
+    mv libbrotli1_*.deb libbrotli1.deb
+
 FROM kubeovn/kube-ovn-base:$BASE_TAG AS setcap
 
 COPY *.sh /kube-ovn/
@@ -27,10 +32,12 @@ FROM kubeovn/kube-ovn-base:$BASE_TAG
 # The base image's Go helpers predate the release security fixes. Build these
 # replacements with go-deps/security/build.sh before assembling this image.
 COPY gobgp kubectl /usr/bin/
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libbrotli1=1.1.0-2ubuntu0.1 && \
+COPY --from=security-packages /packages/libbrotli1.deb /tmp/libbrotli1.deb
+# Upstream deliberately removes apt from the runtime. Install the package
+# obtained through Ubuntu's authenticated repository in the build stage.
+RUN dpkg -i /tmp/libbrotli1.deb && \
     dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.1.0-2ubuntu0.1 && \
-    rm -rf /var/lib/apt/lists/*
+    rm /tmp/libbrotli1.deb
 
 COPY --chmod=0644 logrotate/* /etc/logrotate.d/
 COPY grace_stop_ovn_controller /usr/share/ovn/scripts/grace_stop_ovn_controller
